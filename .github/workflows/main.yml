@@ -1,0 +1,39 @@
+name: Salesforce Metadata Automation
+
+on:
+  push:
+    branches:
+      - main  # Trigger when changes are pushed to the main branch
+  schedule:
+    - cron: "0 * * * *"  # Runs every hour at the start of the hour
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Install Salesforce CLI
+      run: npm install sfdx-cli --global
+
+    - name: Authenticate Salesforce Org
+      env:
+        SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+      run: |
+        echo "$SFDX_AUTH_URL" > sfdx-auth-url.txt
+        sfdx force:auth:sfdxurl:store -f sfdx-auth-url.txt -a DevHub
+
+    - name: Pull Metadata from Org
+      run: sfdx force:source:retrieve -u DevHub -m "ApexClass, CustomObject, Workflow"
+
+    - name: Commit and Push Changes to GitHub
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "your_email@example.com"
+        git add .
+        git commit -m "Automated metadata update"
+        git push origin main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
